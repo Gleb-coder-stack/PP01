@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Календарь{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<style>
+    .fc-event {
+        cursor: pointer;
+        border-radius: 8px;
+        padding: 2px 4px;
+        font-weight: 500;
+        transition: transform 0.2s;
+    }
+    .fc-event:hover {
+        transform: scale(1.02);
+        filter: brightness(1.05);
+    }
+    .fc-daygrid-day {
+        transition: background-color 0.2s;
+        cursor: pointer;
+    }
+    .fc-daygrid-day:hover {
+        background-color: #f8f9fa;
+    }
+    .fc-day-today {
+        background-color: #e8f0fe !important;
+    }
+    .fc-daygrid-day-number {
+        font-weight: 500;
+        padding: 8px;
+    }
+    .fc-toolbar-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .fc-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        transition: transform 0.2s;
+    }
+    .fc-button:hover {
+        transform: scale(1.02);
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46a0 100%);
+    }
+    .fc-button-primary:not(:disabled):active,
+    .fc-button-primary:not(:disabled).fc-button-active {
+        background: linear-gradient(135deg, #5a67d8 0%, #6b46a0 100%);
+    }
+    .fc-daygrid-day-frame {
+        min-height: 80px;
+    }
+    .fc-event-title {
+        font-weight: 500;
+        white-space: normal;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h2 class="mb-4"><i class="fas fa-calendar-alt text-primary"></i> Календарь мероприятий</h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 3, 0);
+
+    try {
+        const response = await fetch(`/api/events/range?start=${startDate.toISOString().split('T')[0]}&end=${endDate.toISOString().split('T')[0]}`);
+        const result = await response.json();
+
+        const events = result.success ? result.data : [];
+
+        // Подготовка событий для календаря
+        const calendarEvents = events.map(event => {
+            let photos = [];
+            if (event.photo_paths) {
+                try {
+                    photos = typeof event.photo_paths === 'string' ? JSON.parse(event.photo_paths) : event.photo_paths;
+                } catch(e) { photos = []; }
+            }
+
+            let bgColor = '#28a745';
+            if (event.status === 'проведено') {
+                bgColor = '#007bff';
+            } else if (event.status === 'отменено') {
+                bgColor = '#dc3545';
+            } else if (event.event_type === 'репетиция') {
+                bgColor = '#17a2b8';
+            }
+
+            return {
+                id: event.id,
+                title: event.title,
+                start: `${event.event_date}T${event.start_time}`,
+                url: `/event/${event.id}`,
+                backgroundColor: bgColor,
+                borderColor: bgColor,
+                textColor: 'white',
+                extendedProps: {
+                    location: event.location,
+                    type: event.event_type,
+                    photos: photos,
+                    participants: event.participants_count || 0
+                }
+            };
+        });
+
+        const calendarEl = document.getElementById('calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ru',
+            firstDay: 1,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listMonth'
+            },
+            buttonText: {
+                today: 'Сегодня',
+                month: 'Месяц',
+                week: 'Неделя',
+                list: 'Список'
+            },
+            events: calendarEvents,
+            eventClick: function(info) {
+                info.jsEvent.preventDefault();
+                window.location.href = info.event.url;
+            },
+            eventDidMount: function(info) {
+                // Всплывающая подсказка с информацией
+                const props = info.event.extendedProps;
+                let tooltipText = `${info.event.title}`;
+                if (props.type) tooltipText += `\n📌 Тип: ${props.type}`;
+                if (props.location) tooltipText += `\n📍 Место: ${props.location}`;
+                if (props.participants) tooltipText += `\n👥 Участников: ${props.participants}`;
+                if (props.photos && props.photos.length > 0) tooltipText += `\n🖼️ Есть фото (${props.photos.length} шт.)`;
+                info.el.setAttribute('title', tooltipText);
+            },
+            dayMaxEvents: true,
+            displayEventTime: true,
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            },
+            height: 'auto',
+            weekends: true,
+            nowIndicator: true,
+            dayCellDidMount: function(info) {
+                // Добавляем подсказку для дня с мероприятиями
+                const dayEvents = calendar.getEvents().filter(e => {
+                    const eventDate = new Date(e.start).toDateString();
+                    return eventDate === info.date.toDateString();
+                });
+                if (dayEvents.length > 0) {
+                    info.el.setAttribute('title', `${dayEvents.length} мероприятие(ий) в этот день`);
+                    info.el.style.cursor = 'pointer';
+                }
+            }
+        });
+
+        calendar.render();
+
+    } catch (error) {
+        console.error('Ошибка загрузки календаря:', error);
+        document.getElementById('calendar').innerHTML = '<div class="alert alert-danger">Ошибка загрузки данных</div>';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Логи изменений{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h2 class="mb-4"><i class="fas fa-history text-primary"></i> Логи изменений</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="logsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Время</th>
+                            <th>Операция</th>
+                            <th>Таблица</th>
+                            <th>ID записи</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr><td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Загрузка...</p>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted mt-3 small">
+                <i class="fas fa-info-circle"></i> Логируются все изменения: добавление, редактирование и удаление записей
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadLogs() {
+    const logs = await getLogs(200);
+    const tbody = document.getElementById('logsTableBody');
+    tbody.innerHTML = '';
+
+    if (logs.length === 0) {
+        tbody.innerHTML = '<table><td colspan="6" class="text-center py-4 text-muted">Нет записей в логах</td></tr>';
+        return;
+    }
+
+    logs.forEach(log => {
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = log.id;
+        row.insertCell(1).textContent = log.operation_time ?
+            new Date(log.operation_time).toLocaleString('ru-RU') : '-';
+
+        const opCell = row.insertCell(2);
+        const opClass = log.operation_type === 'INSERT' ? 'success' :
+                       (log.operation_type === 'UPDATE' ? 'warning' : 'danger');
+        opCell.innerHTML = `<span class="badge bg-${opClass}">${log.operation_type}</span>`;
+
+        row.insertCell(3).textContent = log.table_name;
+        row.insertCell(4).textContent = log.record_id || '-';
+        row.insertCell(5).innerHTML = `<small>${(log.description || '-').substring(0, 150)}</small>`;
+    });
+}
+
+loadLogs();
+// Автообновление каждые 30 секунд
+setInterval(loadLogs, 30000);
+</script>
+{% endblock %}

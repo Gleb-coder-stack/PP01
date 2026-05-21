@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-calendar-alt"></i> {{ event.title }}</h2>
+    <a href="/events-page" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Информация о мероприятии</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr><th width="150">Дата:</th><td>{{ event.event_date }}</td</details></tr>
+                    <tr><th>Время:</th><td>{{ event.start_time }}</td</details></tr>
+                    <tr><th>Тип:</th><td><span class="badge bg-info">{{ event.event_type }}</span></td</details></tr>
+                    <tr><th>Место:</th><td>{{ event.location or 'Не указано' }}</td</details></tr>
+                    <tr><th>Статус:</th>
+                        <td>
+                            {% if event.status == 'запланировано' %}
+                                <span class="badge bg-success">Запланировано</span>
+                            {% elif event.status == 'проведено' %}
+                                <span class="badge bg-primary">Проведено</span>
+                            {% else %}
+                                <span class="badge bg-danger">Отменено</span>
+                            {% endif %}
+                        </td</details></tr>
+                    <tr><th>Описание:</th><td>{{ event.description or 'Нет описания' }}</td</details></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Запись на мероприятие -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-users"></i> Запись на мероприятие</h5>
+            </div>
+            <div class="card-body">
+                {% if event.status == 'запланировано' %}
+                    <form method="POST" action="/events/{{ event.id }}/register">
+                        <div class="mb-3">
+                            <label class="form-label">Выберите участника</label>
+                            <select name="participant_id" class="form-select" required>
+                                <option value="">-- Выберите из списка --</option>
+                                {% for p in all_participants %}
+                                    <option value="{{ p.id }}">{{ p.last_name }} {{ p.first_name }} ({{ p.category }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-pen"></i> Записаться
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <button class="btn btn-outline-primary w-100" onclick="toggleQuickAdd()">
+                        <i class="fas fa-user-plus"></i> Быстрая регистрация
+                    </button>
+
+                    <div id="quickAddForm" style="display: none;" class="mt-3">
+                        <input type="text" id="quickLastName" class="form-control mb-2" placeholder="Фамилия *">
+                        <input type="text" id="quickFirstName" class="form-control mb-2" placeholder="Имя *">
+                        <select id="quickCategory" class="form-select mb-2">
+                            <option value="ребёнок">Ребёнок</option>
+                            <option value="взрослый">Взрослый</option>
+                            <option value="волонтёр">Волонтёр</option>
+                            <option value="особенный гость">Особенный гость</option>
+                        </select>
+                        <input type="text" id="quickPhone" class="form-control mb-2" placeholder="Телефон">
+                        <button class="btn btn-success w-100" onclick="quickAddAndRegister({{ event.id }})">
+                            Добавить и записать
+                        </button>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Запись на это мероприятие закрыта</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Список записанных участников -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Записанные участники ({{ participants|length }})</h5>
+            </div>
+            <div class="card-body">
+                {% if participants and participants|length > 0 %}
+                    <ul class="list-group">
+                        {% for p in participants %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ p.last_name }} {{ p.first_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ p.category }}</small>
+                                </div>
+                                {% if event.status == 'запланировано' %}
+                                    <button class="btn btn-sm btn-danger" onclick="unregisterParticipant({{ event.id }}, {{ p.id }})">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Нет записанных участников</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleQuickAdd() {
+    const form = document.getElementById('quickAddForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function quickAddAndRegister(eventId) {
+    const lastName = document.getElementById('quickLastName').value;
+    const firstName = document.getElementById('quickFirstName').value;
+
+    if (!lastName || !firstName) {
+        alert('Введите фамилию и имя');
+        return;
+    }
+
+    const data = {
+        last_name: lastName,
+        first_name: firstName,
+        category: document.getElementById('quickCategory').value,
+        phone: document.getElementById('quickPhone').value
+    };
+
+    try {
+        const createResponse = await fetch('/api/participants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const createResult = await createResponse.json();
+
+        if (createResult.success) {
+            const participantId = createResult.data.id;
+
+            const registerResponse = await fetch(`/api/events/${eventId}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participant_id: participantId })
+            });
+
+            if (registerResponse.ok) {
+                alert('Участник добавлен и записан');
+                location.reload();
+            } else {
+                alert('Участник создан, но не удалось записать');
+            }
+        } else {
+            alert('Ошибка: ' + createResult.error);
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при добавлении');
+    }
+}
+
+async function unregisterParticipant(eventId, participantId) {
+    if (!confirm('Отменить запись?')) return;
+
+    try {
+        const response = await fetch(`/api/events/${eventId}/unregister/${participantId}`, {
+            method: 'DELETE'
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка отмены записи');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка');
+    }
+}
+</script>
+{% endblock %}

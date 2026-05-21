@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Запись на мероприятия{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h2 class="mb-4"><i class="fas fa-pen-alt text-primary"></i> Запись участников на мероприятия</h2>
+    
+    <div class="row">
+        <!-- Левая колонка - выбор мероприятия -->
+        <div class="col-md-5 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Выберите мероприятие</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" id="eventSearch" class="form-control" placeholder="Поиск по названию...">
+                    </div>
+                    <div class="list-group" id="eventsList" style="max-height: 400px; overflow-y: auto;">
+                        {% for event in events %}
+                            <button type="button" class="list-group-item list-group-item-action" onclick="selectEvent({{ event.id }}, '{{ event.title }}', '{{ event.event_date }}')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ event.title }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ event.event_date }} | {{ event.start_time }} | {{ event.location or 'место не указано' }}</small>
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">{{ event.participants_count or 0 }}</span>
+                                </div>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Правая колонка - управление участниками -->
+        <div class="col-md-7 mb-4">
+            <div class="card" id="participantsCard" style="display: none;">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> 
+                        Запись на: <span id="selectedEventTitle"></span>
+                        <small class="text-muted" id="selectedEventDate"></small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Добавление участника -->
+                    <div class="mb-4">
+                        <h6><i class="fas fa-user-plus"></i> Добавить участника</h6>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <input type="text" id="newLastName" class="form-control" placeholder="Фамилия *">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" id="newFirstName" class="form-control" placeholder="Имя *">
+                            </div>
+                            <div class="col-md-3">
+                                <select id="newCategory" class="form-select">
+                                    <option value="ребёнок">Ребёнок</option>
+                                    <option value="взрослый">Взрослый</option>
+                                    <option value="волонтёр">Волонтёр</option>
+                                    <option value="особенный гость">Особенный гость</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-success w-100" onclick="addAndRegister()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <input type="text" id="newPhone" class="form-control" placeholder="Телефон">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="email" id="newEmail" class="form-control" placeholder="Email">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Выбор существующего участника -->
+                    <div class="mb-3">
+                        <h6><i class="fas fa-list"></i> Или выберите из списка</h6>
+                        <div class="input-group">
+                            <input type="text" id="participantSearch" class="form-control" placeholder="Поиск по фамилии, имени или телефону...">
+                            <select id="participantSelect" class="form-select" style="max-width: 200px;">
+                                <option value="">-- Выберите участника --</option>
+                                {% for p in participants %}
+                                    <option value="{{ p.id }}">{{ p.last_name }} {{ p.first_name }} ({{ p.category }})</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-primary" onclick="registerExistingParticipant()">
+                                <i class="fas fa-pen"></i> Записать
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Список записанных участников -->
+                    <h6><i class="fas fa-check-circle"></i> Записанные участники (<span id="participantsCount">0</span>)</h6>
+                    <div class="list-group" id="registeredParticipantsList" style="max-height: 300px; overflow-y: auto;">
+                        <div class="list-group-item text-muted">Выберите мероприятие</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" id="noEventCard">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+                    <p>Выберите мероприятие из списка слева</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEventId = null;
+
+function selectEvent(id, title, date) {
+    currentEventId = id;
+    document.getElementById('selectedEventTitle').textContent = title;
+    document.getElementById('selectedEventDate').textContent = date;
+    document.getElementById('participantsCard').style.display = 'block';
+    document.getElementById('noEventCard').style.display = 'none';
+    
+    // Очищаем форму
+    document.getElementById('newLastName').value = '';
+    document.getElementById('newFirstName').value = '';
+    document.getElementById('newPhone').value = '';
+    document.getElementById('newEmail').value = '';
+    document.getElementById('participantSearch').value = '';
+    
+    loadRegisteredParticipants(id);
+}
+
+async function loadRegisteredParticipants(eventId) {
+    try {
+        const response = await fetch(`/api/events/${eventId}/participants`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const participants = result.data;
+            const container = document.getElementById('registeredParticipantsList');
+            document.getElementById('participantsCount').textContent = participants.length;
+            
+            if (participants.length === 0) {
+                container.innerHTML = '<div class="list-group-item text-muted">Нет записанных участников</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            for (const p of participants) {
+                let categoryClass = 'secondary';
+                let categoryText = p.category || '-';
+                if (p.category === 'ребёнок') {
+                    categoryClass = 'info';
+                    categoryText = 'Ребёнок';
+                } else if (p.category === 'взрослый') {
+                    categoryClass = 'primary';
+                    categoryText = 'Взрослый';
+                } else if (p.category === 'волонтёр') {
+                    categoryClass = 'success';
+                    categoryText = 'Волонтёр';
+                } else if (p.category === 'особенный гость') {
+                    categoryClass = 'warning';
+                    categoryText = 'Особенный гость';
+                }
+                
+                const div = document.createElement('div');
+                div.className = 'list-group-item d-flex justify-content-between align-items-center';
+                div.innerHTML = `
+                    <div>
+                        <strong>${p.last_name} ${p.first_name}</strong>
+                        <br>
+                        <span class="badge bg-${categoryClass}">${categoryText}</span>
+                        <small class="text-muted ms-2">${p.phone || ''}</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger" onclick="unregisterParticipant(${p.id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+    }
+}
+
+async function addAndRegister() {
+    const lastName = document.getElementById('newLastName').value;
+    const firstName = document.getElementById('newFirstName').value;
+    
+    if (!lastName || !firstName) {
+        alert('Введите фамилию и имя');
+        return;
+    }
+    
+    if (!currentEventId) {
+        alert('Выберите мероприятие');
+        return;
+    }
+    
+    const data = {
+        last_name: lastName,
+        first_name: firstName,
+        category: document.getElementById('newCategory').value,
+        phone: document.getElementById('newPhone').value,
+        email: document.getElementById('newEmail').value
+    };
+    
+    try {
+        // Создаём участника
+        const createResponse = await fetch('/api/participants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const createResult = await createResponse.json();
+        
+        if (createResult.success) {
+            const participantId = createResult.data.id;
+            
+            // Записываем на мероприятие
+            const registerResponse = await fetch(`/api/events/${currentEventId}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participant_id: participantId })
+            });
+            
+            if (registerResponse.ok) {
+                alert('Участник добавлен и записан на мероприятие');
+                document.getElementById('newLastName').value = '';
+                document.getElementById('newFirstName').value = '';
+                document.getElementById('newPhone').value = '';
+                document.getElementById('newEmail').value = '';
+                loadRegisteredParticipants(currentEventId);
+                updateParticipantsCount();
+            } else {
+                alert('Участник создан, но не удалось записать');
+            }
+        } else {
+            alert('Ошибка: ' + createResult.error);
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при добавлении участника');
+    }
+}
+
+async function registerExistingParticipant() {
+    const participantId = document.getElementById('participantSelect').value;
+    
+    if (!participantId) {
+        alert('Выберите участника');
+        return;
+    }
+    
+    if (!currentEventId) {
+        alert('Выберите мероприятие');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/events/${currentEventId}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participant_id: parseInt(participantId) })
+        });
+        
+        if (response.ok) {
+            alert('Участник записан на мероприятие');
+            document.getElementById('participantSelect').value = '';
+            loadRegisteredParticipants(currentEventId);
+            updateParticipantsCount();
+        } else {
+            const result = await response.json();
+            alert('Ошибка: ' + (result.error || 'Участник уже записан'));
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при записи');
+    }
+}
+
+async function unregisterParticipant(participantId) {
+    if (!confirm('Отменить запись?')) return;
+    
+    try {
+        const response = await fetch(`/api/events/${currentEventId}/unregister/${participantId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            alert('Запись отменена');
+            loadRegisteredParticipants(currentEventId);
+            updateParticipantsCount();
+        } else {
+            alert('Ошибка отмены записи');
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка');
+    }
+}
+
+async function updateParticipantsCount() {
+    try {
+        const response = await fetch('/api/events');
+        const result = await response.json();
+        if (result.success) {
+            const events = result.data;
+            for (const event of events) {
+                const button = document.querySelector(`button[onclick="selectEvent(${event.id}, '${event.title}', '${event.event_date}')"]`);
+                if (button) {
+                    const badge = button.querySelector('.badge');
+                    if (badge) {
+                        badge.textContent = event.participants_count || 0;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+    }
+}
+
+// Поиск по мероприятиям
+document.getElementById('eventSearch').addEventListener('input', function(e) {
+    const search = e.target.value.toLowerCase();
+    const buttons = document.querySelectorAll('#eventsList button');
+    
+    for (const btn of buttons) {
+        const text = btn.textContent.toLowerCase();
+        if (text.includes(search)) {
+            btn.style.display = '';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+});
+
+// Поиск по участникам в выпадающем списке
+document.getElementById('participantSearch').addEventListener('input', function(e) {
+    const search = e.target.value.toLowerCase();
+    const select = document.getElementById('participantSelect');
+    const options = select.options;
+    
+    for (let i = 0; i < options.length; i++) {
+        const text = options[i].textContent.toLowerCase();
+        if (text.includes(search) || search === '') {
+            options[i].style.display = '';
+        } else {
+            options[i].style.display = 'none';
+        }
+    }
+});
+</script>
+{% endblock %}

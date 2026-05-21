@@ -1,0 +1,348 @@
+/* Основные стили для сайта АНО "Шаг Навстречу" */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Навигация */
+.navbar {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.4rem;
+}
+
+.navbar-brand i {
+    margin-right: 8px;
+    color: #ffd700;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.nav-link:hover {
+    transform: translateY(-2px);
+}
+
+.nav-link i {
+    margin-right: 6px;
+}
+
+/* Карточки статистики */
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    color: white;
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.stat-card:nth-child(2) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-card:nth-child(3) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-card i {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.stat-label {
+    font-size: 14px;
+    opacity: 0.9;
+    letter-spacing: 1px;
+}
+
+/* Карточки */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    transition: box-shadow 0.3s;
+}
+
+.card:hover {
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 2px solid #f0f0f0;
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.card-header i {
+    margin-right: 8px;
+    color: #667eea;
+}
+
+/* Таблицы */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #343a40;
+    color: white;
+    font-weight: 500;
+    border: none;
+    padding: 12px 8px;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 10px 8px;
+}
+
+/* Кнопки */
+.btn {
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: scale(1.02);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46a0 100%);
+}
+
+.btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+/* Формы */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    padding: 10px 12px;
+    transition: all 0.3s;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+/* Бейджи статусов */
+.badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: #28a745;
+}
+
+.badge-primary {
+    background-color: #007bff;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+}
+
+/* Календарь */
+#calendar {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.fc-daygrid-day {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.fc-daygrid-day:hover {
+    background-color: #f8f9fa;
+}
+
+.fc-day-today {
+    background-color: #f0f0ff !important;
+}
+
+.fc-event {
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.fc-event-title {
+    font-weight: 500;
+}
+
+/* Модальные окна */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-title i {
+    margin-right: 8px;
+}
+
+.modal-footer {
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Подвал */
+footer {
+    background-color: #343a40;
+    color: #adb5bd;
+    padding: 20px 0;
+    text-align: center;
+    margin-top: 50px;
+    font-size: 14px;
+}
+
+footer a {
+    color: #adb5bd;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: white;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .stat-number {
+        font-size: 24px;
+    }
+
+    .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .table {
+        font-size: 12px;
+    }
+
+    .table td, .table th {
+        padding: 6px 4px;
+    }
+
+    .card-header h5 {
+        font-size: 16px;
+    }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #5a67d8;
+}

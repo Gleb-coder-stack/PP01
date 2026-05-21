@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Отчёты{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h2 class="mb-4"><i class="fas fa-chart-bar text-primary"></i> Формирование отчётов</h2>
+
+    <div class="row">
+        <!-- Отчёт о мероприятиях -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Отчёт о мероприятиях</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Сформируйте PDF-отчёт с перечнем мероприятий за выбранный период.</p>
+                    <div class="row mb-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Дата начала</label>
+                            <input type="date" id="reportStartDate" class="form-control">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Дата окончания</label>
+                            <input type="date" id="reportEndDate" class="form-control">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="downloadEventsReport()">
+                                <i class="fas fa-file-pdf"></i> Скачать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистический отчёт -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Статистический отчёт</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Сформируйте PDF-отчёт со статистикой по организации.</p>
+                    <ul class="mb-3">
+                        <li>Общее количество мероприятий</li>
+                        <li>Общее количество участников</li>
+                        <li>Распределение по статусам мероприятий</li>
+                        <li>Распределение по категориям участников</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="downloadStatisticsReport()">
+                        <i class="fas fa-file-pdf"></i> Скачать статистику
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Текущая статистика -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-database"></i> Текущая статистика</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <h2 class="text-primary mb-0" id="statTotalEvents">-</h2>
+                                <p class="mb-0 text-muted">Всего мероприятий</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <h2 class="text-success mb-0" id="statTotalParticipants">-</h2>
+                                <p class="mb-0 text-muted">Всего участников</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <h2 class="text-info mb-0" id="statUpcomingEvents">-</h2>
+                                <p class="mb-0 text-muted">Ближайших мероприятий</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Установка дат по умолчанию (текущий месяц)
+function setDefaultDates() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    document.getElementById('reportStartDate').value = formatDate(firstDay);
+    document.getElementById('reportEndDate').value = formatDate(today);
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Загрузка статистики
+async function loadStatistics() {
+    try {
+        console.log('Загрузка статистики...');
+        const response = await fetch('/api/statistics');
+        const result = await response.json();
+
+        console.log('Ответ API:', result);
+
+        if (result.success && result.data) {
+            document.getElementById('statTotalEvents').textContent = result.data.total_events || 0;
+            document.getElementById('statTotalParticipants').textContent = result.data.total_participants || 0;
+            document.getElementById('statUpcomingEvents').textContent = result.data.upcoming_events || 0;
+        } else {
+            console.error('Ошибка загрузки статистики:', result.error);
+            setDefaultStats();
+        }
+    } catch (error) {
+        console.error('Ошибка запроса:', error);
+        setDefaultStats();
+    }
+}
+
+function setDefaultStats() {
+    document.getElementById('statTotalEvents').textContent = '0';
+    document.getElementById('statTotalParticipants').textContent = '0';
+    document.getElementById('statUpcomingEvents').textContent = '0';
+}
+
+// Скачивание отчётов
+function downloadEventsReport() {
+    const start = document.getElementById('reportStartDate').value;
+    const end = document.getElementById('reportEndDate').value;
+
+    if (!start || !end) {
+        alert('Выберите период');
+        return;
+    }
+
+    window.open(`/api/reports/events/pdf?start=${start}&end=${end}`);
+}
+
+function downloadStatisticsReport() {
+    window.open('/api/reports/statistics/pdf');
+}
+
+// Инициализация
+setDefaultDates();
+loadStatistics();
+</script>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Мероприятия{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-list text-primary"></i> Мероприятия</h2>
+        <button class="btn btn-primary" onclick="showAddModal()">
+            <i class="fas fa-plus"></i> Добавить мероприятие
+        </button>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Поиск по названию...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select id="statusFilter" class="form-select">
+                        <option value="">Все статусы</option>
+                        <option value="запланировано">Запланировано</option>
+                        <option value="проведено">Проведено</option>
+                        <option value="отменено">Отменено</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" onclick="loadEvents()">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица -->
+    <div class="table-responsive">
+        <table class="table table-hover" id="eventsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Дата</th>
+                    <th>Время</th>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Место</th>
+                    <th>Статус</th>
+                    <th>Участников</th>
+                    <th style="width: 80px">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+                <tr><td colspan="9" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Загрузка...</p>
+                </td</details></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calendar-plus"></i> <span id="modalTitle">Добавить мероприятие</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="eventForm">
+                    <input type="hidden" id="eventId">
+                    <div class="mb-3">
+                        <label class="form-label">Название *</label>
+                        <input type="text" id="eventTitle" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Дата *</label>
+                            <input type="date" id="eventDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Время *</label>
+                            <input type="time" id="eventTime" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тип мероприятия *</label>
+                        <select id="eventType" class="form-select" required>
+                            <option value="разминка">Разминка</option>
+                            <option value="мастер-класс">Мастер-класс</option>
+                            <option value="выступление">Выступление</option>
+                            <option value="терапия">Терапия</option>
+                            <option value="репетиция">Репетиция</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Место проведения</label>
+                        <input type="text" id="eventLocation" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Статус</label>
+                        <select id="eventStatus" class="form-select">
+                            <option value="запланировано">Запланировано</option>
+                            <option value="проведено">Проведено</option>
+                            <option value="отменено">Отменено</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea id="eventDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveEvent()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let eventsList = [];
+
+async function loadEvents() {
+    try {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value;
+
+        const response = await fetch('/api/events');
+        const result = await response.json();
+
+        if (result.success) {
+            eventsList = result.data;
+        } else {
+            eventsList = [];
+        }
+
+        let filtered = [...eventsList];
+        if (status) {
+            filtered = filtered.filter(e => e.status === status);
+        }
+        if (search) {
+            filtered = filtered.filter(e => e.title && e.title.toLowerCase().includes(search));
+        }
+
+        const tbody = document.getElementById('eventsTableBody');
+        tbody.innerHTML = '';
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Нет мероприятий</td</details><tr>';
+            return;
+        }
+
+        for (const event of filtered) {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = event.id;
+            row.insertCell(1).textContent = event.event_date || '-';
+            row.insertCell(2).textContent = event.start_time ? event.start_time.substring(0, 5) : '-';
+            row.insertCell(3).innerHTML = `<strong>${event.title || '-'}</strong>`;
+            row.insertCell(4).innerHTML = `<span class="badge bg-info">${event.event_type || '-'}</span>`;
+            row.insertCell(5).textContent = event.location || '-';
+
+            const statusClass = event.status === 'запланировано' ? 'success' :
+                               (event.status === 'проведено' ? 'primary' : 'danger');
+            row.insertCell(6).innerHTML = `<span class="badge bg-${statusClass}">${event.status || '-'}</span>`;
+            row.insertCell(7).innerHTML = `<span class="badge bg-secondary rounded-pill">${event.participants_count || 0}</span>`;
+
+            const actions = row.insertCell(8);
+            actions.innerHTML = `
+                <button class="btn btn-sm btn-warning me-1" onclick="editEvent(${event.id})" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteEventConfirm(${event.id})" title="Удалить">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        const tbody = document.getElementById('eventsTableBody');
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Ошибка загрузки данных</td</details></tr>';
+    }
+}
+
+async function editEvent(id) {
+    try {
+        const response = await fetch(`/api/events/${id}`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            const event = result.data;
+            document.getElementById('modalTitle').textContent = 'Редактировать мероприятие';
+            document.getElementById('eventId').value = event.id;
+            document.getElementById('eventTitle').value = event.title || '';
+            document.getElementById('eventDate').value = event.event_date || '';
+            document.getElementById('eventTime').value = event.start_time ? event.start_time.substring(0, 5) : '';
+            document.getElementById('eventType').value = event.event_type || 'репетиция';
+            document.getElementById('eventLocation').value = event.location || '';
+            document.getElementById('eventStatus').value = event.status || 'запланировано';
+            document.getElementById('eventDescription').value = event.description || '';
+
+            const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка загрузки данных');
+    }
+}
+
+function showAddModal() {
+    document.getElementById('modalTitle').textContent = 'Добавить мероприятие';
+    document.getElementById('eventForm').reset();
+    document.getElementById('eventId').value = '';
+    document.getElementById('eventDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('eventTime').value = '10:00';
+    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+    modal.show();
+}
+
+async function saveEvent() {
+    const eventData = {
+        title: document.getElementById('eventTitle').value,
+        event_date: document.getElementById('eventDate').value,
+        start_time: document.getElementById('eventTime').value,
+        event_type: document.getElementById('eventType').value,
+        location: document.getElementById('eventLocation').value,
+        status: document.getElementById('eventStatus').value,
+        description: document.getElementById('eventDescription').value
+    };
+
+    if (!eventData.title || !eventData.event_date || !eventData.start_time) {
+        alert('Заполните обязательные поля');
+        return;
+    }
+
+    const eventId = document.getElementById('eventId').value;
+    let url = '/api/events';
+    let method = 'POST';
+
+    if (eventId) {
+        url = `/api/events/${eventId}`;
+        method = 'PUT';
+    }
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+            loadEvents();
+            alert('Успешно сохранено');
+        } else {
+            alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка сохранения');
+    }
+}
+
+async function deleteEventConfirm(id) {
+    if (confirm('Удалить мероприятие?')) {
+        try {
+            const response = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                loadEvents();
+                alert('Мероприятие удалено');
+            } else {
+                alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Ошибка удаления');
+        }
+    }
+}
+
+loadEvents();
+
+let debounceTimer;
+document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadEvents, 300);
+});
+document.getElementById('statusFilter').addEventListener('change', loadEvents);
+</script>
+{% endblock %}
