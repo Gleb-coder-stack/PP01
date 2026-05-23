@@ -372,12 +372,22 @@ def api_logs():
 @app.route('/api/reports/events/pdf', methods=['GET'])
 def api_events_pdf():
     try:
-        start = datetime.strptime(request.args.get('start'), '%Y-%m-%d').date()
-        end = datetime.strptime(request.args.get('end'), '%Y-%m-%d').date()
+        start_str = request.args.get('start')
+        end_str = request.args.get('end')
+
+        print(f"Получены параметры: start={start_str}, end={end_str}")  # Отладка
+
+        if not start_str or not end_str:
+            return jsonify({'success': False, 'error': 'Не указаны даты'}), 400
+
+        start = datetime.strptime(start_str, '%Y-%m-%d').date()
+        end = datetime.strptime(end_str, '%Y-%m-%d').date()
+
         events = db.get_events_by_range(start, end)
         filename = pdf_exporter.export_events(events, start, end)
         return send_file(filename, as_attachment=True, download_name=f"events_{start}_{end}.pdf")
     except Exception as e:
+        print(f"Ошибка: {e}")
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/reports/statistics/pdf', methods=['GET'])
@@ -386,6 +396,20 @@ def api_statistics_pdf():
         stats = db.get_statistics()
         filename = pdf_exporter.export_statistics(stats)
         return send_file(filename, as_attachment=True, download_name=f"statistics_{date.today()}.pdf")
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/reports/events/with-participants/pdf', methods=['GET'])
+def api_events_with_participants_pdf():
+    """Экспорт мероприятий с участниками в PDF (таблица)"""
+    try:
+        start = datetime.strptime(request.args.get('start'), '%Y-%m-%d').date()
+        end = datetime.strptime(request.args.get('end'), '%Y-%m-%d').date()
+        events = db.get_events_by_range(start, end)
+        # Фильтруем только запланированные и проведённые
+        filtered_events = [e for e in events if e['status'] in ('запланировано', 'проведено')]
+        filename = pdf_exporter.export_events_with_participants_table(filtered_events, db, start, end)
+        return send_file(filename, as_attachment=True, download_name=f"events_with_participants_{start}_{end}.pdf")
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 

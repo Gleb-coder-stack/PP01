@@ -18,15 +18,22 @@
                     <div class="row mb-3">
                         <div class="col-md-5">
                             <label class="form-label">Дата начала</label>
-                            <input type="date" id="reportStartDate" class="form-control">
+                            <input type="date" id="startDate" class="form-control" value="2026-05-01">
                         </div>
                         <div class="col-md-5">
                             <label class="form-label">Дата окончания</label>
-                            <input type="date" id="reportEndDate" class="form-control">
+                            <input type="date" id="endDate" class="form-control" value="2026-05-31">
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
-                            <button class="btn btn-primary w-100" onclick="downloadEventsReport()">
+                            <button class="btn btn-primary w-100" id="downloadBtn">
                                 <i class="fas fa-file-pdf"></i> Скачать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-outline-primary w-100" id="downloadWithParticipantsBtn">
+                                <i class="fas fa-users"></i> Скачать с участниками
                             </button>
                         </div>
                     </div>
@@ -48,7 +55,7 @@
                         <li>Распределение по статусам мероприятий</li>
                         <li>Распределение по категориям участников</li>
                     </ul>
-                    <button class="btn btn-primary" onclick="downloadStatisticsReport()">
+                    <button class="btn btn-primary" id="statisticsBtn">
                         <i class="fas fa-file-pdf"></i> Скачать статистику
                     </button>
                 </div>
@@ -91,70 +98,68 @@
 </div>
 
 <script>
-// Установка дат по умолчанию (текущий месяц)
-function setDefaultDates() {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    document.getElementById('reportStartDate').value = formatDate(firstDay);
-    document.getElementById('reportEndDate').value = formatDate(today);
-}
-
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 // Загрузка статистики
 async function loadStatistics() {
     try {
-        console.log('Загрузка статистики...');
         const response = await fetch('/api/statistics');
         const result = await response.json();
-
-        console.log('Ответ API:', result);
 
         if (result.success && result.data) {
             document.getElementById('statTotalEvents').textContent = result.data.total_events || 0;
             document.getElementById('statTotalParticipants').textContent = result.data.total_participants || 0;
             document.getElementById('statUpcomingEvents').textContent = result.data.upcoming_events || 0;
-        } else {
-            console.error('Ошибка загрузки статистики:', result.error);
-            setDefaultStats();
         }
     } catch (error) {
-        console.error('Ошибка запроса:', error);
-        setDefaultStats();
+        console.error('Ошибка загрузки статистики:', error);
     }
 }
 
-function setDefaultStats() {
-    document.getElementById('statTotalEvents').textContent = '0';
-    document.getElementById('statTotalParticipants').textContent = '0';
-    document.getElementById('statUpcomingEvents').textContent = '0';
-}
-
-// Скачивание отчётов
-function downloadEventsReport() {
-    const start = document.getElementById('reportStartDate').value;
-    const end = document.getElementById('reportEndDate').value;
+// Скачивание обычного отчёта
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
 
     if (!start || !end) {
         alert('Выберите период');
         return;
     }
 
-    window.open(`/api/reports/events/pdf?start=${start}&end=${end}`);
-}
+    // Используем fetch для диагностики
+    fetch(`/api/reports/events/pdf?start=${start}&end=${end}`)
+        .then(response => {
+            if (response.ok) {
+                // Если успешно, скачиваем файл
+                window.location.href = `/api/reports/events/pdf?start=${start}&end=${end}`;
+            } else {
+                return response.json().then(data => {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                });
+            }
+        })
+        .catch(error => {
+            alert('Ошибка запроса: ' + error);
+        });
+});
 
-function downloadStatisticsReport() {
+// Скачивание отчёта с участниками
+document.getElementById('downloadWithParticipantsBtn').addEventListener('click', function() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+
+    if (!start || !end) {
+        alert('Выберите период');
+        return;
+    }
+
+    window.location.href = `/api/reports/events/with-participants/pdf?start=${start}&end=${end}`;
+});
+
+// Скачивание статистики
+document.getElementById('statisticsBtn').addEventListener('click', function() {
     window.open('/api/reports/statistics/pdf');
-}
+});
 
-// Инициализация
-setDefaultDates();
+// Загрузка при старте
 loadStatistics();
 </script>
 {% endblock %}

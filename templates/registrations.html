@@ -7,7 +7,7 @@
     <h2 class="mb-4"><i class="fas fa-pen-alt text-primary"></i> Запись участников на мероприятия</h2>
     
     <div class="row">
-        <!-- Левая колонка - выбор мероприятия -->
+        <!-- Левая колонка - выбор мероприятия (только запланированные) -->
         <div class="col-md-5 mb-4">
             <div class="card">
                 <div class="card-header bg-white">
@@ -18,7 +18,7 @@
                         <input type="text" id="eventSearch" class="form-control" placeholder="Поиск по названию...">
                     </div>
                     <div class="list-group" id="eventsList" style="max-height: 400px; overflow-y: auto;">
-                        {% for event in events %}
+                        {% for event in events if event.status == 'запланировано' %}
                             <button type="button" class="list-group-item list-group-item-action" onclick="selectEvent({{ event.id }}, '{{ event.title }}', '{{ event.event_date }}')">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
@@ -34,21 +34,21 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Правая колонка - управление участниками -->
         <div class="col-md-7 mb-4">
             <div class="card" id="participantsCard" style="display: none;">
                 <div class="card-header bg-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-users"></i> 
+                        <i class="fas fa-users"></i>
                         Запись на: <span id="selectedEventTitle"></span>
                         <small class="text-muted" id="selectedEventDate"></small>
                     </h5>
                 </div>
                 <div class="card-body">
-                    <!-- Добавление участника -->
+                    <!-- Форма добавления нового участника -->
                     <div class="mb-4">
-                        <h6><i class="fas fa-user-plus"></i> Добавить участника</h6>
+                        <h6><i class="fas fa-user-plus"></i> Быстрая регистрация</h6>
                         <div class="row g-2">
                             <div class="col-md-4">
                                 <input type="text" id="newLastName" class="form-control" placeholder="Фамилия *">
@@ -79,15 +79,15 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <!-- Выбор существующего участника -->
                     <div class="mb-3">
                         <h6><i class="fas fa-list"></i> Или выберите из списка</h6>
                         <div class="input-group">
-                            <input type="text" id="participantSearch" class="form-control" placeholder="Поиск по фамилии, имени или телефону...">
-                            <select id="participantSelect" class="form-select" style="max-width: 200px;">
+                            <input type="text" id="participantSearch" class="form-control" placeholder="Поиск...">
+                            <select id="participantSelect" class="form-select" style="max-width: 250px;">
                                 <option value="">-- Выберите участника --</option>
                                 {% for p in participants %}
                                     <option value="{{ p.id }}">{{ p.last_name }} {{ p.first_name }} ({{ p.category }})</option>
@@ -98,9 +98,9 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <!-- Список записанных участников -->
                     <h6><i class="fas fa-check-circle"></i> Записанные участники (<span id="participantsCount">0</span>)</h6>
                     <div class="list-group" id="registeredParticipantsList" style="max-height: 300px; overflow-y: auto;">
@@ -108,7 +108,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="card" id="noEventCard">
                 <div class="card-body text-center text-muted py-5">
                     <i class="fas fa-calendar-alt fa-3x mb-3"></i>
@@ -121,6 +121,7 @@
 
 <script>
 let currentEventId = null;
+let allParticipants = {{ participants | tojson }};
 
 function selectEvent(id, title, date) {
     currentEventId = id;
@@ -128,14 +129,14 @@ function selectEvent(id, title, date) {
     document.getElementById('selectedEventDate').textContent = date;
     document.getElementById('participantsCard').style.display = 'block';
     document.getElementById('noEventCard').style.display = 'none';
-    
+
     // Очищаем форму
     document.getElementById('newLastName').value = '';
     document.getElementById('newFirstName').value = '';
     document.getElementById('newPhone').value = '';
     document.getElementById('newEmail').value = '';
     document.getElementById('participantSearch').value = '';
-    
+
     loadRegisteredParticipants(id);
 }
 
@@ -143,17 +144,17 @@ async function loadRegisteredParticipants(eventId) {
     try {
         const response = await fetch(`/api/events/${eventId}/participants`);
         const result = await response.json();
-        
+
         if (result.success) {
             const participants = result.data;
             const container = document.getElementById('registeredParticipantsList');
             document.getElementById('participantsCount').textContent = participants.length;
-            
+
             if (participants.length === 0) {
                 container.innerHTML = '<div class="list-group-item text-muted">Нет записанных участников</div>';
                 return;
             }
-            
+
             container.innerHTML = '';
             for (const p of participants) {
                 let categoryClass = 'secondary';
@@ -171,7 +172,7 @@ async function loadRegisteredParticipants(eventId) {
                     categoryClass = 'warning';
                     categoryText = 'Особенный гость';
                 }
-                
+
                 const div = document.createElement('div');
                 div.className = 'list-group-item d-flex justify-content-between align-items-center';
                 div.innerHTML = `
@@ -196,17 +197,17 @@ async function loadRegisteredParticipants(eventId) {
 async function addAndRegister() {
     const lastName = document.getElementById('newLastName').value;
     const firstName = document.getElementById('newFirstName').value;
-    
+
     if (!lastName || !firstName) {
         alert('Введите фамилию и имя');
         return;
     }
-    
+
     if (!currentEventId) {
         alert('Выберите мероприятие');
         return;
     }
-    
+
     const data = {
         last_name: lastName,
         first_name: firstName,
@@ -214,28 +215,26 @@ async function addAndRegister() {
         phone: document.getElementById('newPhone').value,
         email: document.getElementById('newEmail').value
     };
-    
+
     try {
-        // Создаём участника
         const createResponse = await fetch('/api/participants', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const createResult = await createResponse.json();
-        
+
         if (createResult.success) {
             const participantId = createResult.data.id;
-            
-            // Записываем на мероприятие
+
             const registerResponse = await fetch(`/api/events/${currentEventId}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ participant_id: participantId })
             });
-            
+
             if (registerResponse.ok) {
-                alert('Участник добавлен и записан на мероприятие');
+                alert('Участник добавлен и записан');
                 document.getElementById('newLastName').value = '';
                 document.getElementById('newFirstName').value = '';
                 document.getElementById('newPhone').value = '';
@@ -250,32 +249,32 @@ async function addAndRegister() {
         }
     } catch (error) {
         console.error('Ошибка:', error);
-        alert('Ошибка при добавлении участника');
+        alert('Ошибка при добавлении');
     }
 }
 
 async function registerExistingParticipant() {
     const participantId = document.getElementById('participantSelect').value;
-    
+
     if (!participantId) {
         alert('Выберите участника');
         return;
     }
-    
+
     if (!currentEventId) {
         alert('Выберите мероприятие');
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/events/${currentEventId}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ participant_id: parseInt(participantId) })
         });
-        
+
         if (response.ok) {
-            alert('Участник записан на мероприятие');
+            alert('Участник записан');
             document.getElementById('participantSelect').value = '';
             loadRegisteredParticipants(currentEventId);
             updateParticipantsCount();
@@ -291,12 +290,12 @@ async function registerExistingParticipant() {
 
 async function unregisterParticipant(participantId) {
     if (!confirm('Отменить запись?')) return;
-    
+
     try {
         const response = await fetch(`/api/events/${currentEventId}/unregister/${participantId}`, {
             method: 'DELETE'
         });
-        
+
         if (response.ok) {
             alert('Запись отменена');
             loadRegisteredParticipants(currentEventId);
@@ -335,7 +334,7 @@ async function updateParticipantsCount() {
 document.getElementById('eventSearch').addEventListener('input', function(e) {
     const search = e.target.value.toLowerCase();
     const buttons = document.querySelectorAll('#eventsList button');
-    
+
     for (const btn of buttons) {
         const text = btn.textContent.toLowerCase();
         if (text.includes(search)) {
@@ -346,7 +345,7 @@ document.getElementById('eventSearch').addEventListener('input', function(e) {
     }
 });
 
-// Поиск по участникам в выпадающем списке
+// Поиск по участникам
 document.getElementById('participantSearch').addEventListener('input', function(e) {
     const search = e.target.value.toLowerCase();
     const select = document.getElementById('participantSelect');
